@@ -1,0 +1,185 @@
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "grandchat", "-d", "grandchat" ]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    environment:
+      - POSTGRES_USER=grandchat
+      - POSTGRES_PASSWORD=grandchat
+      - POSTGRES_DB=grandchat
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+    command: ["postgres", "-c", "wal_level=logical", "-c", "wal_writer_delay=10ms"]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    volumes:
+      - ./backend:/usr/src/app
+    expose:
+      - 8000
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrations:
+    build: ./backend
+    restart: on-failure
+    command: >
+      python manage.py migrate
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    stdin_open: true
+    build: ./frontend
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    expose:
+      - 5173
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - backend
+
+  centrifugo:
+    image: centrifugo/centrifugo:v6
+    restart: unless-stopped
+    volumes:
+      - ./centrifugo:/centrifugo
+    command: centrifugo -c config.json
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.3
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.3
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+    expose:
+      - 9092
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--list", "--bootstrap-server", "localhost:9092"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_MAX_REQUEST_SIZE: "10485760"
+      KAFKA_MESSAGE_MAX_BYTES: "10485760"
+      KAFKA_MAX_PARTITION_FETCH_BYTES: "10485760"
+
+  connect:
+    image: debezium/connect:2.5
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+
+  connect-config-loader:
+    image: appropriate/curl:latest
+    depends_on:
+      - connect
+    volumes:
+      - ./debezium/debezium-config.json:/debezium-config.json
+    command: >
+      /bin/sh -c "
+        echo 'Waiting for Kafka Connect to start...';
+        while ! curl -f http://connect:8083/connectors; do sleep 1; done;
+        echo 'Kafka Connect is up, posting configuration';
+        curl -X DELETE -H 'Content-Type: application/json' http://connect:8083/connectors/grandchat-chat-connector;
+        curl -X POST -H 'Content-Type: application/json' -v --data @/debezium-config.json http://connect:8083/connectors;
+        echo 'Configuration posted';
+      "
+
+  nginx:
+    image: nginx:1.25
+    restart: unless-stopped
+    volumes:
+      - ./nginx:/etc/nginx/
+    ports:
+      - 9000:80
+    depends_on:
+      - backend
+      - frontend
+      - centrifugo
+
+  redis:
+    image: redis:${REDIS_VERSION:-7}-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    depends_on:
+      - centrifugo
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    depends_on:
+      - prometheus
+    # Expose Grafana on host port 3000
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      # Mount local provisioning directory to automatically configure Prometheus as a datasource
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  postgres_data:
+  grafana-data:
