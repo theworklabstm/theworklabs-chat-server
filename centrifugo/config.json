@@ -47,7 +47,7 @@
       "name": "postgresql",
       "type": "postgresql",
       "postgresql": {
-        "dsn": "postgresql://grandchat:grandchat@db:5432/grandchat",
+        "dsn": "postgresql://theworklabs:theworklabs@db:5432/theworklabs",
         "outbox_table_name": "chat_outbox",
         "num_partitions": 1,
         "partition_select_limit": 100,
@@ -74,7 +74,7 @@
   "database": {
     "enabled": false,
     "postgresql": {
-      "dsn": "postgresql://grandchat:grandchat@db:5432/grandchat"
+      "dsn": "postgresql://theworklabs:theworklabs@db:5432/theworklabs"
     }
   },
   "push_notifications": {

@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
 import AuthContext from './AuthContext';
+import logo from './assets/theworklabs-logo.jpg';
 
 interface ChatLayoutProps {
   children: any
@@ -15,8 +16,14 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ children, realTimeStatus, unrec
   return (
     <div id='chat-layout'>
       <div id='chat-navbar'>
-        <NavLink to={`/`} className={({ isActive }) => isActive ? "navbar-active-link" : ""}>My rooms</NavLink>
-        <NavLink to={`/search`} className={({ isActive }) => isActive ? "navbar-active-link" : ""}>Discover</NavLink>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <img src={logo} width="32px" height="32px" style={{borderRadius: '6px', objectFit: 'contain'}} alt="TheWorklabs" />
+          <span style={{ fontWeight: 'bold', color: '#333' }}>TheWorklabs</span>
+        </div>
+        <div style={{ display: 'flex', gap: '20px' }}>
+          <NavLink to={`/`} className={({ isActive }) => isActive ? "navbar-active-link" : ""}>My rooms</NavLink>
+          <NavLink to={`/search`} className={({ isActive }) => isActive ? "navbar-active-link" : ""}>Discover</NavLink>
+        </div>
         <span id="logout-container">
           <span id="status" className={'status-'+ realTimeStatus}>{realTimeStatus}</span>
           &nbsp;
