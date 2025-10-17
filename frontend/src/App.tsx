@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import axios from 'axios';
 
 import ChatLogin from './ChatLogin';
+import ChatSignup from './ChatSignup';
 import ChatRoomList from './ChatRoomList';
 import ChatRoomDetail from './ChatRoomDetail';
 import ChatLayout from './ChatLayout';
@@ -35,6 +36,11 @@ function reducer(state: any, action: any) {
     }
     case 'ADD_ROOMS': {
       const newRooms = action.payload.rooms;
+
+      // Check if newRooms is null or undefined
+      if (!newRooms || !Array.isArray(newRooms)) {
+        return state;
+      }
 
       // Update roomsById with new rooms, avoiding duplicates.
       const updatedRoomsById = { ...state.roomsById };
@@ -180,6 +186,7 @@ const App: React.FC = () => {
   const [chatState, dispatch] = useReducer(reducer, initialChatState);
   const [realTimeStatus, setRealTimeStatus] = useState('🔴')
   const [messageQueue, setMessageQueue] = useState<any[]>([]);
+  const [showSignup, setShowSignup] = useState(false);
 
   useEffect(() => {
     if (!authenticated) {
@@ -562,7 +569,17 @@ const App: React.FC = () => {
             </Router>
           </ChatContext.Provider>
         ) : (
-          <ChatLogin onSuccess={onLoginSuccess} />
+          showSignup ? (
+            <ChatSignup 
+              onSuccess={onLoginSuccess} 
+              onSwitchToLogin={() => setShowSignup(false)} 
+            />
+          ) : (
+            <ChatLogin 
+              onSuccess={onLoginSuccess} 
+              onSwitchToSignup={() => setShowSignup(true)} 
+            />
+          )
         )}
       </AuthContext.Provider>
     </CsrfContext.Provider>
