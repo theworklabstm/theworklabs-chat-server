@@ -5,14 +5,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "grandchat", "-d", "grandchat" ]
+      test: [ "CMD", "pg_isready", "-U", "theworklabs", "-d", "theworklabs" ]
       interval: 1s
       timeout: 5s
       retries: 10
     environment:
-      - POSTGRES_USER=grandchat
-      - POSTGRES_PASSWORD=grandchat
-      - POSTGRES_DB=grandchat
+      - POSTGRES_USER=theworklabs
+      - POSTGRES_PASSWORD=theworklabs
+      - POSTGRES_DB=theworklabs
     expose:
       - 5432
     ports:
@@ -127,7 +127,7 @@ services:
         echo 'Waiting for Kafka Connect to start...';
         while ! curl -f http://connect:8083/connectors; do sleep 1; done;
         echo 'Kafka Connect is up, posting configuration';
-        curl -X DELETE -H 'Content-Type: application/json' http://connect:8083/connectors/grandchat-chat-connector;
+        curl -X DELETE -H 'Content-Type: application/json' http://connect:8083/connectors/theworklabs-chat-connector;
         curl -X POST -H 'Content-Type: application/json' -v --data @/debezium-config.json http://connect:8083/connectors;
         echo 'Configuration posted';
       "

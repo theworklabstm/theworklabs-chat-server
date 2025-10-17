@@ -1,4 +1,4 @@
-# Django + React + Centrifugo chat (instant messenger) application 
+# TheWorklabs - Django + React + Centrifugo chat application 
 
 This is a source code for [Centrifugo Chat/Messenger Tutorial](https://centrifugal.dev/docs/tutorial/intro).
 
@@ -35,4 +35,6 @@ Running `setup_dev` function will create 100k users and then 4 rooms with differ
 
 Then go to [http://localhost:9000](http://localhost:9000) and enjoy the working app! Login using second user (from incognito tab to not logout the first one session, or simply use different browser/device) to see the real-time in action.
 
-![demo](grandchat.png?raw=true "Image of app")
+![TheWorklabs Logo](logo_new.jpg?raw=true "TheWorklabs")
+
+![demo](theworklabs.png?raw=true "TheWorklabs App")

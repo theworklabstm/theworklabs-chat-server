@@ -5,10 +5,12 @@ import requests
 import logging
 
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.http import require_POST
 from django.conf import settings
+from django.db import IntegrityError
 
 
 def get_csrf(request):
@@ -47,17 +49,54 @@ def get_subscription_token(request):
 
 
 @require_POST
+def signup_view(request):
+    credentials = json.loads(request.body)
+    username = credentials.get('username')
+    password = credentials.get('password')
+    email = credentials.get('email', '')
+
+    if not username or not password:
+        return JsonResponse({'detail': 'provide username and password'}, status=400)
+
+    if len(username) < 3:
+        return JsonResponse({'detail': 'username must be at least 3 characters long'}, status=400)
+
+    if len(password) < 6:
+        return JsonResponse({'detail': 'password must be at least 6 characters long'}, status=400)
+
+    try:
+        user = User.objects.create_user(username=username, password=password, email=email)
+        # Automatically login the user after successful signup
+        login(request, user)
+        return JsonResponse({
+            'id': user.pk,
+            'username': user.username,
+            'settings': {
+                'push_notifications': {
+                    'enabled': settings.PUSH_NOTIFICATIONS_ENABLED,
+                    'vapid_public_key': settings.PUSH_NOTIFICATIONS_VAPID_PUBLIC_KEY,
+                    'firebase_config': settings.PUSH_NOTIFICATIONS_FIREBASE_CONFIG,
+                }
+            }
+        })
+    except IntegrityError:
+        return JsonResponse({'detail': 'username already exists'}, status=400)
+    except Exception as e:
+        return JsonResponse({'detail': 'failed to create user'}, status=500)
+
+
+@require_POST
 def login_view(request):
     credentials = json.loads(request.body)
     username = credentials.get('username')
     password = credentials.get('password')
 
     if not username or not password:
-        return JsonResponse({'detail': 'provide username and password'}, status=400)
+        return JsonResponse({'detail': 'Please provide both username and password'}, status=400)
 
     user = authenticate(username=username, password=password)
     if not user:
-        return JsonResponse({'detail': 'invalid credentials'}, status=400)
+        return JsonResponse({'detail': 'Invalid username or password'}, status=400)
 
     login(request, user)
     return JsonResponse({
