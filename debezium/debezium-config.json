@@ -1,12 +1,12 @@
 {
-    "name": "grandchat-connector",
+    "name": "theworklabs-connector",
     "config": {
         "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
         "database.hostname": "db",
         "database.port": "5432",
-        "database.user": "grandchat",
-        "database.password": "grandchat",
-        "database.dbname": "grandchat",
+        "database.user": "theworklabs",
+        "database.password": "theworklabs",
+        "database.dbname": "theworklabs",
         "database.server.name": "db",
         "table.include.list": "public.chat_cdc",
         "database.history.kafka.bootstrap.servers": "kafka:9092",
